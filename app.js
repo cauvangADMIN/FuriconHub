@@ -64,10 +64,20 @@ let visibleIconIndices = new Set(); // Track which icons are currently visible
 
 function renderGrid() {
   // Calculate which tiles should be visible in the viewport
+  const viewportWidth = viewport.clientWidth;
+  const viewportHeight = viewport.clientHeight;
+  
+  // Calculate the visible area in grid coordinates
   const xStart = Math.max(0, Math.floor(-gridOffset.x / (ICON_SIZE + GRID_GAP)));
   const yStart = Math.max(0, Math.floor(-gridOffset.y / (ICON_SIZE + GRID_GAP)));
-  const xEnd = Math.min(COLS, xStart + COLS + 2); // Add buffer for smoother transitions
-  const yEnd = Math.min(totalRows, yStart + ROWS + 3); // Add buffer for smoother transitions
+  
+  // Calculate how many columns and rows can fit in the viewport
+  const visibleCols = Math.ceil(viewportWidth / (ICON_SIZE + GRID_GAP)) + 1;
+  const visibleRows = Math.ceil(viewportHeight / (ICON_SIZE + GRID_GAP)) + 1;
+  
+  // Calculate end indices with buffer for all directions
+  const xEnd = Math.min(COLS, xStart + visibleCols + 1);
+  const yEnd = Math.min(totalRows, yStart + visibleRows + 1);
 
   // Track which icons should be visible now
   const newVisibleIndices = new Set();
