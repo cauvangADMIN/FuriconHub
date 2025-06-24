@@ -27,12 +27,12 @@ function renameImages(startingName) {
         .filter(file => {
             // Filter out directories and non-jpg files
             const filePath = path.join(sourceDir, file);
-            return file.toLowerCase().endsWith('.jpg') && 
+            return (file.toLowerCase().endsWith('.jpg') || file.toLowerCase().endsWith('.webp')) && 
                    fs.statSync(filePath).isFile() &&
                    file !== 'result'; // Exclude the result directory
         });
     
-    console.log(`Found ${files.length} JPG images to rename.`);
+    console.log(`Found ${files.length} images to rename.`);
     
     // Rename and copy each file
     files.forEach(file => {

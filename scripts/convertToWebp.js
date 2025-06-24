@@ -13,13 +13,13 @@ const jpgFiles = fs.readdirSync(Folder).filter(file =>
   file.toLowerCase().endsWith('.jpg') || file.toLowerCase().endsWith('.jpeg')
 );
 
-// Get all jpg files in Meme folder
+// Get all png files in Meme folder
 const pngFiles = fs.readdirSync(Folder).filter(file => 
   file.toLowerCase().endsWith('.png')
 );
 
 console.log(`Found ${jpgFiles.length} JPG files to convert`);
-console.log(`Found ${pngFiles.length} JPG files to convert`);
+console.log(`Found ${pngFiles.length} PNG files to convert`);
 
 if (jpgFiles.length === 0) {
   console.log('No JPG files found. Please add some JPG files to the meme folder.');
