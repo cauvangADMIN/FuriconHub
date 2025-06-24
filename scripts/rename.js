@@ -27,7 +27,7 @@ function renameImages(startingName) {
         .filter(file => {
             // Filter out directories and non-jpg files
             const filePath = path.join(sourceDir, file);
-            return (file.toLowerCase().endsWith('.jpg') || file.toLowerCase().endsWith('.webp')) && 
+            return (file.toLowerCase().endsWith('.jpg') || file.toLowerCase().endsWith('.png')) && 
                    fs.statSync(filePath).isFile() &&
                    file !== 'result'; // Exclude the result directory
         });
