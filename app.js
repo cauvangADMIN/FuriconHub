@@ -10,6 +10,10 @@ let dragging = false, dragStart = null, dragOffset = null;
 let grid, viewport;
 let totalRows = 1;
 
+// Lightbox elements
+let lightbox, lightboxImg, lightboxCaption, closeBtn;
+let isDraggingGrid = false; // Flag to track if we're dragging the grid
+
 // Load icons from JSON and render initial grid
 window.onload = async function() {
   try {
@@ -25,6 +29,15 @@ window.onload = async function() {
     totalRows = Math.ceil(icons.length / COLS);
     grid = document.getElementById('icon-grid');
     viewport = document.getElementById('icon-grid-viewport');
+    
+    // Initialize lightbox elements
+    lightbox = document.getElementById('lightbox');
+    lightboxImg = document.getElementById('lightbox-img');
+    lightboxCaption = document.querySelector('.lightbox-caption');
+    closeBtn = document.querySelector('.close-btn');
+    
+    // Setup lightbox events
+    setupLightbox();
     
     // Calculate the total width including gaps
     const totalWidth = (COLS * ICON_SIZE) + ((COLS - 1) * GRID_GAP);
@@ -45,6 +58,39 @@ window.onload = async function() {
     console.error('Error loading icons:', error);
   }
 };
+
+// Setup lightbox functionality
+function setupLightbox() {
+  // Close lightbox when clicking the close button
+  closeBtn.addEventListener('click', () => {
+    lightbox.classList.remove('active');
+  });
+  
+  // Close lightbox when clicking outside the content
+  lightbox.addEventListener('click', (e) => {
+    if (e.target === lightbox) {
+      lightbox.classList.remove('active');
+    }
+  });
+  
+  // Close lightbox with Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && lightbox.classList.contains('active')) {
+      lightbox.classList.remove('active');
+    }
+  });
+}
+
+// Show lightbox with the selected image
+function showLightbox(iconIndex) {
+  const icon = icons[iconIndex];
+  if (!icon) return;
+  
+  lightboxImg.src = icon.src;
+  lightboxImg.alt = icon.name;
+  lightboxCaption.textContent = icon.name;
+  lightbox.classList.add('active');
+}
 
 function centerGrid() {
   const viewportWidth = viewport.clientWidth;
@@ -125,6 +171,14 @@ function renderGrid() {
     // Add pop-in animation class
     tile.classList.add('pop-in');
     
+    // Add click event to show lightbox
+    tile.addEventListener('click', (e) => {
+      // Only show lightbox if we're not dragging the grid
+      if (!isDraggingGrid) {
+        showLightbox(i);
+      }
+    });
+    
     grid.appendChild(tile);
   });
   
@@ -172,6 +226,7 @@ function setupDrag() {
     }
     
     dragging = true;
+    isDraggingGrid = false; // Reset the dragging flag
     grid.classList.add('dragging'); // Add dragging class
     dragStart = { x: e.clientX, y: e.clientY };
     lastDragPosition = { ...dragStart };
@@ -184,6 +239,11 @@ function setupDrag() {
   // In the mousemove event listener
   viewport.addEventListener('mousemove', (e) => {
     if (!dragging) return;
+    
+    // Set the flag to true if we've moved more than a few pixels
+    if (Math.abs(e.clientX - dragStart.x) > 5 || Math.abs(e.clientY - dragStart.y) > 5) {
+      isDraggingGrid = true;
+    }
     
     const currentTime = performance.now();
     const deltaTime = currentTime - lastTimestamp;
