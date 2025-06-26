@@ -14,16 +14,74 @@ let totalRows = 1;
 let lightbox, lightboxImg, lightboxCaption, closeBtn;
 let isDraggingGrid = false; // Flag to track if we're dragging the grid
 
+// Function to add watermark to an image
+async function addWatermarkToImage(imageSrc) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "Anonymous"; // Enable CORS if images are from another domain
+    img.onload = function() {
+      // Create canvas
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Set canvas dimensions to match the image
+      canvas.width = img.width;
+      canvas.height = img.height;
+      
+      // Draw the image onto the canvas (this preserves transparency)
+      ctx.drawImage(img, 0, 0);
+      
+      // Calculate font size based on image dimensions - minimum 16px, scales with image width
+      const fontSize = Math.max(16, Math.floor(canvas.width * 0.05));
+      
+      // Add watermark text
+      ctx.font = `${fontSize}px Arial`;
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; // Dark text with transparency
+      ctx.textAlign = 'center';
+      
+      // Position at 3/4 from the top
+      const textY = Math.floor(canvas.height * 0.9);
+      
+      // Add the watermark text
+      ctx.fillText('This is watermark', canvas.width / 2, textY);
+      
+      // Convert canvas to data URL - use PNG to preserve transparency
+      const watermarkedImageUrl = canvas.toDataURL('image/png');
+      resolve(watermarkedImageUrl);
+    };
+    
+    img.onerror = function() {
+      reject(new Error('Failed to load image'));
+    };
+    
+    img.src = imageSrc;
+  });
+}
+
 // Load icons from JSON and render initial grid
 window.onload = async function() {
   try {
     const response = await fetch('assets/images/manifest.json');
     const data = await response.json();
     
-    // Map the data to the format we need
-    icons = data.map(item => ({
-      src: item.img,
-      name: item.caption
+    // Map the data to the format we need and add watermark
+    icons = await Promise.all(data.map(async item => {
+      try {
+        // Add watermark to the image
+        const watermarkedSrc = await addWatermarkToImage(item.img);
+        return {
+          src: watermarkedSrc,
+          originalSrc: item.img, // Keep original source for reference
+          name: item.caption
+        };
+      } catch (error) {
+        console.error('Error adding watermark to image:', error);
+        // Return original image if watermarking fails
+        return {
+          src: item.img,
+          name: item.caption
+        };
+      }
     }));
     
     totalRows = Math.ceil(icons.length / COLS);
