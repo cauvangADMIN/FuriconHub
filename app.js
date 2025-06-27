@@ -322,6 +322,8 @@ let velocity = { x: 0, y: 0 };
 let lastDragPosition = null;
 let animationFrame = null;
 let lastTimestamp = null;
+let lastRenderTime = 0;
+const RENDER_THROTTLE = 100; // ms between renders during drag
 
 // Drag Events
 function setupDrag() {
@@ -419,6 +421,7 @@ function setupDrag() {
     }
     
     dragging = true;
+    isDraggingGrid = false; // Reset the dragging flag for touch events
     let t = e.touches[0];
     dragStart = { x: t.clientX, y: t.clientY };
     lastDragPosition = { ...dragStart };
@@ -430,17 +433,20 @@ function setupDrag() {
   viewport.addEventListener('touchmove', (e) => {
     if (!dragging) return;
     
-    // Add at the top with other variables
-    let lastRenderTime = 0;
-    const RENDER_THROTTLE = 100; // ms between renders during drag
+    // Set the flag to true if we've moved more than a few pixels
+    let t = e.touches[0];
+    if (Math.abs(t.clientX - dragStart.x) > 5 || Math.abs(t.clientY - dragStart.y) > 5) {
+      isDraggingGrid = true;
+    }
+    
+    const currentTime = performance.now();
+    const deltaTime = currentTime - lastTimestamp;
     
     // Then in the mousemove and touchmove event listeners
-    const currentTime = performance.now();
     if (currentTime - lastRenderTime > RENDER_THROTTLE) {
       renderGrid();
       lastRenderTime = currentTime;
     }
-    let t = e.touches[0];
     
     if (deltaTime > 0) {  // Avoid division by zero
       // Calculate velocity (pixels per millisecond)
@@ -458,6 +464,10 @@ function setupDrag() {
     const gridWidth = (COLS * ICON_SIZE) + ((COLS - 1) * GRID_GAP);
     const gridHeight = (totalRows * ICON_SIZE) + ((totalRows - 1) * GRID_GAP);
     
+    // Get current viewport dimensions
+    const viewportWidth = viewport.clientWidth;
+    const viewportHeight = viewport.clientHeight;
+    
     // Limit dragging to prevent white space
     // Right edge constraint
     const minX = Math.min(0, viewportWidth - gridWidth);
@@ -473,7 +483,7 @@ function setupDrag() {
     ny = Math.max(minY, Math.min(maxY, ny));
     
     gridOffset = { x: nx, y: ny };
-    grid.style.transform = `translate(${gridOffset.x}px,${gridOffset.y}px)`;
+    updateGridPosition(); // Use the same update function as mouse events
     
     // Prevent default to avoid page scrolling
     e.preventDefault();
@@ -482,6 +492,7 @@ function setupDrag() {
   viewport.addEventListener('touchend', (e) => {
     if (dragging) {
       dragging = false;
+      grid.classList.remove('dragging'); // Remove dragging class like in mouseup
       
       // Start momentum scrolling if there's velocity
       if (Math.abs(velocity.x) > 0.1 || Math.abs(velocity.y) > 0.1) {
