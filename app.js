@@ -137,6 +137,55 @@ function setupLightbox() {
       lightbox.classList.remove('active');
     }
   });
+  
+  // Add copy functionality to the copy button
+  const copyBtn = document.querySelector('.copy-btn');
+  copyBtn.addEventListener('click', async () => {
+    try {
+      // Get the current image from the lightbox
+      const img = document.getElementById('lightbox-img');
+      
+      // Create a canvas to draw the image (needed for clipboard API)
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      // Wait for the image to load completely
+      await new Promise((resolve) => {
+        if (img.complete) {
+          resolve();
+        } else {
+          img.onload = resolve;
+        }
+      });
+      
+      // Set canvas dimensions to match the image
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      
+      // Draw the image onto the canvas
+      ctx.drawImage(img, 0, 0);
+      
+      // Convert the canvas to a blob
+      canvas.toBlob(async (blob) => {
+        try {
+          // Create a ClipboardItem with the blob
+          const item = new ClipboardItem({ 'image/png': blob });
+          
+          // Write to clipboard
+          await navigator.clipboard.write([item]);
+          
+          // Show success message
+          alert('Image copied to clipboard!');
+        } catch (error) {
+          console.error('Error copying to clipboard:', error);
+          alert('Failed to copy image. ' + error.message);
+        }
+      }, 'image/png');
+    } catch (error) {
+      console.error('Error preparing image for clipboard:', error);
+      alert('Failed to prepare image for copying. ' + error.message);
+    }
+  });
 }
 
 // Show lightbox with the selected image
