@@ -5,7 +5,7 @@ const path = require('path');
 const imageDir = path.resolve(__dirname, '..', 'assets/images');
 const manifestPath = path.join(imageDir, 'manifest.json');
 const imagePrefix = 'assets/images/';
-const imagePattern = /^ecchi-\d+\.webp$/i;
+const imagePattern = /^cat\d+\.webp$/i;
 
 // Ensure the directory exists
 if (!fs.existsSync(imageDir)) {
