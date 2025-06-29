@@ -98,6 +98,7 @@ nav ul li a.active {
   cursor: pointer;
 }
 
+/* Add loading animation for images */
 .icon-tile img {
   width: 100%; 
   height: 100%;
@@ -110,6 +111,17 @@ nav ul li a.active {
   transition: all 0.3s ease;
   user-select: none;
   pointer-events: none;
+}
+
+/* Add loading animation */
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 0.8; }
+  100% { opacity: 0.6; }
+}
+
+.icon-tile img[src^="data:image/svg+xml"] {
+  animation: pulse 1.5s infinite;
 }
 
 .icon-tile .caption {

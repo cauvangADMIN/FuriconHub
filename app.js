@@ -4,118 +4,25 @@ const ROWS = 15;           // Number of rows in viewport
 const ICON_SIZE = 200;    // px
 const GRID_GAP = 20;      // px
 
-let icons = [];
+let icons = [];           // Metadata for all icons
+let loadedIcons = {};     // Cache for loaded icons
 let gridOffset = { x: 0, y: 0 };
 let dragging = false, dragStart = null, dragOffset = null;
 let grid, viewport;
 let totalRows = 1;
+let visibleIconIndices = new Set(); // Track which icons are currently visible
 
 // Lightbox elements
 let lightbox, lightboxImg, lightboxCaption, closeBtn;
 let isDraggingGrid = false; // Flag to track if we're dragging the grid
 
-// Function to add watermark to an image
-async function addWatermarkToImage(imageSrc) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = "Anonymous"; // Enable CORS if images are from another domain
-    img.onload = function() {
-      // Create canvas
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      
-      // Set canvas dimensions to match the image
-      canvas.width = img.width;
-      canvas.height = img.height;
-      
-      // Draw the image onto the canvas (this preserves transparency)
-      ctx.drawImage(img, 0, 0);
-      
-      // Calculate font size based on image dimensions - minimum 16px, scales with image width
-      const fontSize = Math.max(16, Math.floor(canvas.width * 0.05));
-      
-      // Add watermark text
-      ctx.font = `${fontSize}px Arial`;
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; // Dark text with transparency
-      ctx.textAlign = 'center';
-      
-      // Position at 3/4 from the top
-      const textY = Math.floor(canvas.height * 0.9);
-      
-      // Add the watermark text
-      ctx.fillText('This is watermark', canvas.width / 2, textY);
-      
-      // Convert canvas to data URL - use PNG to preserve transparency
-      const watermarkedImageUrl = canvas.toDataURL('image/png');
-      resolve(watermarkedImageUrl);
-    };
-    
-    img.onerror = function() {
-      reject(new Error('Failed to load image'));
-    };
-    
-    img.src = imageSrc;
-  });
-}
-
-// Load icons from JSON and render initial grid
-window.onload = async function() {
-  try {
-    const response = await fetch('assets/images/manifest.json');
-    const data = await response.json();
-    
-    // Map the data to the format we need and add watermark
-    icons = await Promise.all(data.map(async item => {
-      try {
-        // Add watermark to the image
-        const watermarkedSrc = await addWatermarkToImage(item.img);
-        return {
-          src: watermarkedSrc,
-          originalSrc: item.img, // Keep original source for reference
-          name: item.caption
-        };
-      } catch (error) {
-        console.error('Error adding watermark to image:', error);
-        // Return original image if watermarking fails
-        return {
-          src: item.img,
-          name: item.caption
-        };
-      }
-    }));
-    
-    totalRows = Math.ceil(icons.length / COLS);
-    grid = document.getElementById('icon-grid');
-    viewport = document.getElementById('icon-grid-viewport');
-    
-    // Initialize lightbox elements
-    lightbox = document.getElementById('lightbox');
-    lightboxImg = document.getElementById('lightbox-img');
-    lightboxCaption = document.querySelector('.lightbox-caption');
-    closeBtn = document.querySelector('.close-btn');
-    
-    // Setup lightbox events
-    setupLightbox();
-    
-    // Calculate the total width including gaps
-    const totalWidth = (COLS * ICON_SIZE) + ((COLS - 1) * GRID_GAP);
-    const totalHeight = (totalRows * ICON_SIZE) + ((totalRows - 1) * GRID_GAP);
-    
-    grid.style.gridTemplateColumns = `repeat(${COLS}, ${ICON_SIZE}px)`;
-    grid.style.gridTemplateRows = `repeat(${totalRows}, ${ICON_SIZE}px)`;
-    grid.style.gridGap = `${GRID_GAP}px`;
-    grid.style.width = totalWidth + 'px';
-    grid.style.height = totalHeight + 'px';
-    
-    renderGrid();
-    setupDrag();
-    
-    // Center the grid initially
-    centerGrid();
-  } catch (error) {
-    console.error('Error loading icons:', error);
-  }
-};
+// Variables for drag momentum
+let velocity = { x: 0, y: 0 };
+let lastDragPosition = null;
+let animationFrame = null;
+let lastTimestamp = null;
+let lastRenderTime = 0;
+const RENDER_THROTTLE = 100; // ms between renders during drag
 
 // Setup lightbox functionality
 function setupLightbox() {
@@ -188,15 +95,97 @@ function setupLightbox() {
   });
 }
 
+// Load icons metadata from JSON and setup initial grid
+window.onload = async function() {
+  try {
+    const response = await fetch('assets/images/manifest.json');
+    const data = await response.json();
+    
+    // Just store metadata without loading all images
+    icons = data.map(item => ({
+      originalSrc: item.img,
+      name: item.caption,
+      loaded: false
+    }));
+    
+    totalRows = Math.ceil(icons.length / COLS);
+    grid = document.getElementById('icon-grid');
+    viewport = document.getElementById('icon-grid-viewport');
+    
+    // Initialize lightbox elements
+    lightbox = document.getElementById('lightbox');
+    lightboxImg = document.getElementById('lightbox-img');
+    lightboxCaption = document.querySelector('.lightbox-caption');
+    closeBtn = document.querySelector('.close-btn');
+    
+    // Setup lightbox events
+    setupLightbox();
+    
+    // Calculate the total width including gaps
+    const totalWidth = (COLS * ICON_SIZE) + ((COLS - 1) * GRID_GAP);
+    const totalHeight = (totalRows * ICON_SIZE) + ((totalRows - 1) * GRID_GAP);
+    
+    grid.style.gridTemplateColumns = `repeat(${COLS}, ${ICON_SIZE}px)`;
+    grid.style.gridTemplateRows = `repeat(${totalRows}, ${ICON_SIZE}px)`;
+    grid.style.gridGap = `${GRID_GAP}px`;
+    grid.style.width = totalWidth + 'px';
+    grid.style.height = totalHeight + 'px';
+    
+    renderGrid();
+    setupDrag();
+    
+    // Center the grid initially
+    centerGrid();
+  } catch (error) {
+    console.error('Error loading icons:', error);
+  }
+};
+
+// Load and process an icon only when needed
+async function loadIcon(index) {
+  // If already loaded, return from cache
+  if (loadedIcons[index]) {
+    return loadedIcons[index];
+  }
+  
+  const icon = icons[index];
+  if (!icon) return null;
+  
+  try {
+    // Cache the result without watermark
+    loadedIcons[index] = {
+      src: icon.originalSrc,
+      originalSrc: icon.originalSrc,
+      name: icon.name
+    };
+    
+    return loadedIcons[index];
+  } catch (error) {
+    console.error(`Error loading icon ${index}:`, error);
+    // Return original image if loading fails
+    loadedIcons[index] = {
+      src: icon.originalSrc,
+      originalSrc: icon.originalSrc,
+      name: icon.name
+    };
+    return loadedIcons[index];
+  }
+}
+
 // Show lightbox with the selected image
-function showLightbox(iconIndex) {
-  const icon = icons[iconIndex];
+async function showLightbox(iconIndex) {
+  // Show loading state
+  lightboxImg.src = '';
+  lightboxCaption.textContent = 'Loading...';
+  lightbox.classList.add('active');
+  
+  // Load the icon if not already loaded
+  const icon = await loadIcon(iconIndex);
   if (!icon) return;
   
   lightboxImg.src = icon.src;
   lightboxImg.alt = icon.name;
   lightboxCaption.textContent = icon.name;
-  lightbox.classList.add('active');
 }
 
 function centerGrid() {
@@ -211,9 +200,6 @@ function centerGrid() {
   // Apply the centered position
   grid.style.transform = `translate(${gridOffset.x}px,${gridOffset.y}px)`;
 }
-
-// Add this at the top with other variables
-let visibleIconIndices = new Set(); // Track which icons are currently visible
 
 function renderGrid() {
   // Calculate which tiles should be visible in the viewport
@@ -262,11 +248,14 @@ function renderGrid() {
     tile.style.gridRow = r + 1;
     tile.style.gridColumn = c + 1;
     
-    // Create image element
+    // Create image placeholder
     let img = document.createElement('img');
-    img.src = icons[i].src;
     img.alt = icons[i].name;
     img.draggable = false;
+    
+    // Add loading indicator
+    img.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgZmlsbD0iI2YwZjBmMCIvPjx0ZXh0IHg9IjEwMCIgeT0iMTAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMTUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IiM5OTkiPkxvYWRpbmcuLi48L3RleHQ+PC9zdmc+';
+    
     tile.appendChild(img);
     
     // Add caption
@@ -287,6 +276,15 @@ function renderGrid() {
     });
     
     grid.appendChild(tile);
+    
+    // Load the actual image
+    loadIcon(i).then(loadedIcon => {
+      if (loadedIcon && tile.parentNode === grid) {
+        img.src = loadedIcon.src;
+      }
+    }).catch(err => {
+      console.error(`Error loading icon ${i}:`, err);
+    });
   });
   
   // Remove icons that are no longer visible with pop-out animation
@@ -316,14 +314,6 @@ function renderGrid() {
 function updateGridPosition() {
   grid.style.transform = `translate(${gridOffset.x}px,${gridOffset.y}px)`;
 }
-
-// Add these variables at the top with other variables
-let velocity = { x: 0, y: 0 };
-let lastDragPosition = null;
-let animationFrame = null;
-let lastTimestamp = null;
-let lastRenderTime = 0;
-const RENDER_THROTTLE = 100; // ms between renders during drag
 
 // Drag Events
 function setupDrag() {

@@ -37,7 +37,7 @@ function renameImages(startingName) {
     // Rename and copy each file
     files.forEach(file => {
         const sourcePath = path.join(sourceDir, file);
-        const newFileName = `${baseName}${counter}.jpg`;
+        const newFileName = `${baseName}${counter}.png`;
         const destPath = path.join(destDir, newFileName);
         
         // Copy the file with the new name
