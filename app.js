@@ -549,3 +549,172 @@ function startMomentumScroll() {
   // Start the momentum loop
   animationFrame = requestAnimationFrame(momentumLoop);
 }
+
+// Ad Banner Management
+const desktopAdScripts = [
+  {
+    atOptions: {
+      'key': 'c0554a7b1b255283aa18326eb3440b12',
+      'format': 'iframe',
+      'height': 90,
+      'width': 728,
+      'params': {}
+    },
+    src: '//snailthreatenedinvited.com/c0554a7b1b255283aa18326eb3440b12/invoke.js'
+  },
+  {
+    atOptions: {
+      'key': '19882b1c51dda4b9e25bfbac0d2842b9',
+      'format': 'iframe',
+      'height': 90,
+      'width': 728,
+      'params': {}
+    },
+    src: '//snailthreatenedinvited.com/19882b1c51dda4b9e25bfbac0d2842b9/invoke.js'
+  },
+  {
+    atOptions: {
+      'key': '8df9ddedc9378c3551931bb97512728b',
+      'format': 'iframe',
+      'height': 90,
+      'width': 728,
+      'params': {}
+    },
+    src: '//snailthreatenedinvited.com/8df9ddedc9378c3551931bb97512728b/invoke.js'
+  },
+  {
+    atOptions: {
+      'key': '45b3f26c1dcbc1b3eb20d40b1059f55c',
+      'format': 'iframe',
+      'height': 90,
+      'width': 728,
+      'params': {}
+    },
+    src: '//snailthreatenedinvited.com/45b3f26c1dcbc1b3eb20d40b1059f55c/invoke.js'
+  },
+  {
+    atOptions: {
+      'key': '66b5f133ececafa99d08648df00df691',
+      'format': 'iframe',
+      'height': 90,
+      'width': 728,
+      'params': {}
+    },
+    src: '//snailthreatenedinvited.com/66b5f133ececafa99d08648df00df691/invoke.js'
+  }
+];
+
+const mobileAdScripts = [
+  {
+    atOptions: {
+      'key': '3d5952392e7aa4283bb507a471443b66',
+      'format': 'iframe',
+      'height': 60,
+      'width': 468,
+      'params': {}
+    },
+    src: '//snailthreatenedinvited.com/3d5952392e7aa4283bb507a471443b66/invoke.js'
+  },
+  {
+    atOptions: {
+      'key': '0e30e11022ca384f24b66435d8805b45',
+      'format': 'iframe',
+      'height': 60,
+      'width': 468,
+      'params': {}
+    },
+    src: '//snailthreatenedinvited.com/0e30e11022ca384f24b66435d8805b45/invoke.js'
+  },
+  {
+    atOptions: {
+      'key': '5ba06a022cf6fe415b79ac6d25d27981',
+      'format': 'iframe',
+      'height': 60,
+      'width': 468,
+      'params': {}
+    },
+    src: '//snailthreatenedinvited.com/5ba06a022cf6fe415b79ac6d25d27981/invoke.js'
+  },
+  {
+    atOptions: {
+      'key': '179263f701feef7d655b640f88937afe',
+      'format': 'iframe',
+      'height': 60,
+      'width': 468,
+      'params': {}
+    },
+    src: '//snailthreatenedinvited.com/179263f701feef7d655b640f88937afe/invoke.js'
+  },
+  {
+    atOptions: {
+      'key': '8ff4a7c8c277133017ddccbea54360f9',
+      'format': 'iframe',
+      'height': 60,
+      'width': 468,
+      'params': {}
+    },
+    src: '//snailthreatenedinvited.com/8ff4a7c8c277133017ddccbea54360f9/invoke.js'
+  }
+];
+let currentAdIndex = 0;
+let adRotationInterval;
+
+// Function to check if device is mobile
+function isMobileDevice() {
+  return window.innerWidth <= 768;
+}
+
+// Function to load a random ad script
+function loadRandomAdScript() {
+  const adContainer = document.getElementById('ad-container');
+  if (!adContainer) return;
+  
+  // Clear previous ad content
+  adContainer.innerHTML = '';
+  
+  // Select appropriate ad scripts based on device type
+  const adScripts = isMobileDevice() ? mobileAdScripts : desktopAdScripts;
+  
+  // Get current ad script
+  const adScript = adScripts[currentAdIndex];
+  
+  // Create a container for this specific ad
+  const adElement = document.createElement('div');
+  adElement.className = 'ad-element';
+  adContainer.appendChild(adElement);
+  
+  // Set global atOptions variable required by the ad script
+  window.atOptions = adScript.atOptions;
+  
+  // Create and append the script element
+  const scriptElement = document.createElement('script');
+  scriptElement.type = 'text/javascript';
+  scriptElement.src = adScript.src;
+  adElement.appendChild(scriptElement);
+  
+  // Update index for next rotation
+  currentAdIndex = (currentAdIndex + 1) % adScripts.length;
+}
+
+// Function to start ad rotation
+function startAdRotation() {
+  // Load initial ad
+  loadRandomAdScript();
+  
+  // Set up rotation interval (15 seconds)
+  adRotationInterval = setInterval(loadRandomAdScript, 15000);
+}
+
+// Initialize ad system when window loads
+window.addEventListener('load', () => {
+  startAdRotation();
+  
+  // Reload appropriate ad when window is resized (switching between mobile/desktop)
+  let resizeTimeout;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      loadRandomAdScript();
+    }, 300);
+  });
+});

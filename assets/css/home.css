@@ -307,4 +307,40 @@ nav ul li a.active {
     width: 100%;
   }
 }
+
+/* Ad Container Styles */
+.ad-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 728px; /* Chính xác bằng chiều rộng của banner desktop */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: none;
+  z-index: 50;
+  box-shadow: 0 -2px 5px rgba(0, 0, 0, 0.1);
+  height: 90px; /* Chính xác bằng chiều cao của banner desktop */
+  margin: 0 auto; /* Căn giữa container */
+  left: 50%; /* Đặt vị trí bắt đầu ở giữa */
+  transform: translateX(-50%); /* Dịch chuyển ngược lại 50% chiều rộng để căn giữa */
+}
+
+.ad-element {
+  width: 728px; /* Chính xác bằng chiều rộng của banner desktop */
+  height: 90px; /* Chính xác bằng chiều cao của banner desktop */
+}
+
+/* Ensure ad container is visible on all devices */
+@media (max-width: 768px) {
+  .ad-container {
+    width: 468px; /* Chính xác bằng chiều rộng của banner mobile */
+    height: 60px; /* Chính xác bằng chiều cao của banner mobile */
+  }
+  
+  .ad-element {
+    width: 468px; /* Chính xác bằng chiều rộng của banner mobile */
+    height: 60px; /* Chính xác bằng chiều cao của banner mobile */
+  }
+}
   
