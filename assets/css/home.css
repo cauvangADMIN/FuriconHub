@@ -255,9 +255,10 @@ nav ul li a.active {
 }
 
 .lightbox-caption {
-  font-size: 16px;
+  font-size: 18px;
   font-weight: 500;
-  margin-bottom: 20px;
+  margin-top: 10px;
+  margin-bottom: 10px;
   text-align: center;
   color: #333;
 }
@@ -287,6 +288,26 @@ nav ul li a.active {
   color: white;
 }
 
+/* Style for disabled button */
+.copy-btn.disabled {
+  background-color: #cccccc !important;
+  color: #666666 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
+
+.copy-btn.disabled:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Style for close button */
+.copy-btn.close-btn-style {
+  background-color: #ff3333; /* Red */
+  color: white;
+}
 .buy-btn:hover, .copy-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
@@ -342,5 +363,47 @@ nav ul li a.active {
     width: 468px; /* Chính xác bằng chiều rộng của banner mobile */
     height: 60px; /* Chính xác bằng chiều cao của banner mobile */
   }
+}
+
+/* Lightbox caption styles for countdown and success */
+.lightbox-caption.countdown {
+  color: #ff0000;
+  font-weight: bold;
+}
+
+.lightbox-caption.success {
+  color: #00aa00;
+  font-weight: bold;
+}
+
+/* Style for the ad container that will replace the image */
+.lightbox-ad-container {
+  width: 300px !important;
+  height: 250px !important;
+  margin: 0 auto;
+  background-color: #f0f0f0;
+  display: block !important;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden !important; /* Prevent content from spilling out */
+  position: relative;
+  z-index: 10;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+/* Make sure iframe inside the ad container fits properly */
+.lightbox-ad-container iframe {
+  width: 300px !important;
+  height: 250px !important;
+  max-width: 300px !important;
+  max-height: 250px !important;
+  border: none;
+  margin: 0;
+  padding: 0;
+  display: block !important; /* Prevent inline display issues */
+  overflow: hidden !important;
+  visibility: visible !important;
+  opacity: 1 !important;
 }
   

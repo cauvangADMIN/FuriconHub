@@ -47,7 +47,26 @@ function setupLightbox() {
   
   // Add copy functionality to the copy button
   const copyBtn = document.querySelector('.copy-btn');
+  let copyInProgress = false; // Add a flag to track if copy is in progress
+
   copyBtn.addEventListener('click', async () => {
+    // If copy is already in progress, just close the lightbox
+    if (copyBtn.classList.contains('close-btn-style')) {
+      lightbox.classList.remove('active');
+      
+      // Reset the button for next time
+      setTimeout(() => {
+        copyBtn.textContent = "Copy this image (Watermark)";
+        copyBtn.classList.remove('close-btn-style', 'disabled');
+        copyInProgress = false;
+      }, 300);
+      return;
+    }
+    
+    // Prevent multiple copy operations
+    if (copyInProgress) return;
+    copyInProgress = true;
+    
     try {
       // Get the current image from the lightbox
       const img = document.getElementById('lightbox-img');
@@ -72,6 +91,18 @@ function setupLightbox() {
       // Draw the image onto the canvas
       ctx.drawImage(img, 0, 0);
       
+      // Change button to close button and disable it
+      copyBtn.textContent = "Close this popup (Đóng)";
+      copyBtn.classList.add('close-btn-style', 'disabled');
+      
+      // Start countdown immediately
+      let countdownSeconds = 5;
+      lightboxCaption.textContent = `Copying image... ${countdownSeconds}`;
+      lightboxCaption.className = 'lightbox-caption countdown';
+      
+      // Replace the image with an ad immediately before starting the countdown
+      replaceImageWithAd();
+      
       // Convert the canvas to a blob
       canvas.toBlob(async (blob) => {
         try {
@@ -81,18 +112,141 @@ function setupLightbox() {
           // Write to clipboard
           await navigator.clipboard.write([item]);
           
-          // Show success message
-          alert('Image copied to clipboard!');
+          // Use a unique variable name for the interval
+          const lightboxCountdownInterval = setInterval(() => {
+            countdownSeconds--;
+            if (countdownSeconds > 0) {
+              lightboxCaption.textContent = `Copying image... ${countdownSeconds}`;
+            } else {
+              clearInterval(lightboxCountdownInterval);
+              lightboxCaption.textContent = 'Image copied to clipboard!';
+              lightboxCaption.className = 'lightbox-caption success';
+              
+              // Enable the close button after countdown
+              copyBtn.classList.remove('disabled');
+            }
+          }, 1000);
+          
         } catch (error) {
           console.error('Error copying to clipboard:', error);
           alert('Failed to copy image. ' + error.message);
+          
+          // Reset button state in case of error
+          copyBtn.textContent = "Copy this image (Watermark)";
+          copyBtn.classList.remove('close-btn-style', 'disabled');
+          copyInProgress = false;
         }
       }, 'image/png');
     } catch (error) {
       console.error('Error preparing image for clipboard:', error);
       alert('Failed to prepare image for copying. ' + error.message);
+      
+      // Reset button state in case of error
+      copyBtn.textContent = "Copy this image (Watermark)";
+      copyBtn.classList.remove('close-btn-style', 'disabled');
+      copyInProgress = false;
     }
   });
+}
+
+// Function to replace the lightbox image with an ad
+function replaceImageWithAd() {
+  // Get the lightbox image
+  const lightboxImg = document.getElementById('lightbox-img');
+  
+  // Hide the original image
+  lightboxImg.style.display = 'none';
+  
+  // Remove any existing ad container
+  const existingAdContainer = document.getElementById('lightbox-ad-container');
+  if (existingAdContainer) {
+    existingAdContainer.remove();
+  }
+  
+  // Create ad container with a unique ID
+  const adContainer = document.createElement('div');
+  adContainer.id = 'lightbox-ad-container';
+  adContainer.className = 'lightbox-ad-container';
+  
+  // Add a loading indicator
+  adContainer.innerHTML = '<div style="text-align: center;">Loading ad...</div>';
+  
+  // Insert the ad container right after the image
+  lightboxImg.parentNode.insertBefore(adContainer, lightboxImg.nextSibling);
+  
+  // Select a random ad from the lightbox ad scripts
+  const lightboxAdIndex = Math.floor(Math.random() * lightboxAdScripts.length);
+  const adScript = lightboxAdScripts[lightboxAdIndex];
+  
+  // Create a unique namespace for this ad to avoid conflicts
+  const uniqueNamespace = 'lightboxAd_' + Date.now();
+  window[uniqueNamespace] = {};
+  
+  // Copy atOptions to the unique namespace
+  window[uniqueNamespace].atOptions = JSON.parse(JSON.stringify(adScript.atOptions));
+  
+  // Create a script element with modified content to use our namespace
+  const script = document.createElement('script');
+  
+  // Modify the script to use our namespace
+  fetch(adScript.src)
+    .then(response => response.text())
+    .then(scriptContent => {
+      // Replace references to window.atOptions with our namespaced version
+      const modifiedContent = scriptContent.replace(
+        /window\.atOptions|atOptions/g, 
+        `window['${uniqueNamespace}'].atOptions`
+      );
+      
+      // Create and execute the modified script
+      const inlineScript = document.createElement('script');
+      inlineScript.textContent = modifiedContent;
+      adContainer.appendChild(inlineScript);
+      
+      // Clear the loading indicator after a short delay
+      setTimeout(() => {
+        const loadingIndicator = adContainer.querySelector('div');
+        if (loadingIndicator) {
+          loadingIndicator.remove();
+        }
+      }, 500);
+    })
+    .catch(error => {
+      console.error('Error loading ad script:', error);
+      adContainer.innerHTML = '<div style="text-align: center;">Ad failed to load</div>';
+      
+      // Fallback: create an iframe directly
+      setTimeout(() => {
+        adContainer.innerHTML = '';
+        const iframe = document.createElement('iframe');
+        iframe.width = '300';
+        iframe.height = '250';
+        iframe.style.border = 'none';
+        iframe.src = 'about:blank';
+        adContainer.appendChild(iframe);
+        
+        // Write a simple placeholder ad to the iframe
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        iframeDoc.open();
+        iframeDoc.write(`
+          <html>
+          <head>
+            <style>
+              body { margin: 0; display: flex; align-items: center; justify-content: center; height: 100%; background: #f0f0f0; font-family: Arial, sans-serif; }
+              .ad-placeholder { text-align: center; padding: 20px; }
+            </style>
+          </head>
+          <body>
+            <div class="ad-placeholder">
+              <h3>Advertisement</h3>
+              <p>300 x 250</p>
+            </div>
+          </body>
+          </html>
+        `);
+        iframeDoc.close();
+      }, 1000);
+    });
 }
 
 // Load icons metadata from JSON and setup initial grid
@@ -136,6 +290,9 @@ window.onload = async function() {
     
     // Center the grid initially
     centerGrid();
+    
+    // Preload the lightbox ads
+    setTimeout(preloadLightboxAds, 3000); // Delay preloading to not interfere with initial page load
   } catch (error) {
     console.error('Error loading icons:', error);
   }
@@ -178,6 +335,22 @@ async function showLightbox(iconIndex) {
   lightboxImg.src = '';
   lightboxCaption.textContent = 'Loading...';
   lightbox.classList.add('active');
+  
+  // Reset lightbox state - remove any ad containers
+  const existingAdContainer = document.getElementById('lightbox-ad-container');
+  if (existingAdContainer) {
+    existingAdContainer.remove();
+  }
+  
+  // Reset copy button to original state
+  const copyBtn = document.querySelector('.copy-btn');
+  copyBtn.textContent = "Copy this image (Watermark)";
+  copyBtn.classList.remove('close-btn-style', 'disabled');
+  copyInProgress = false; // Reset the copy in progress flag
+  
+  // Make sure the original image is visible
+  lightboxImg.style.display = 'block';
+  lightboxCaption.className = 'lightbox-caption';
   
   // Load the icon if not already loaded
   const icon = await loadIcon(iconIndex);
@@ -550,7 +723,243 @@ function startMomentumScroll() {
   animationFrame = requestAnimationFrame(momentumLoop);
 }
 
-// Ad Banner Management
+// Lightbox Ad Banner Management (300x250 banners)
+const lightboxAdScripts = [
+  {
+    atOptions: {
+      'key': '98e4ffed756f58a532bd5f5a6c5a493a',
+      'format': 'iframe',
+      'height': 250,
+      'width': 300,
+      'params': {}
+    },
+    src: '//snailthreatenedinvited.com/98e4ffed756f58a532bd5f5a6c5a493a/invoke.js',
+    preloaded: false
+  },
+  {
+    atOptions: {
+      'key': '7c7b5884fcb9c78838bb6fbb2e72739f',
+      'format': 'iframe',
+      'height': 250,
+      'width': 300,
+      'params': {}
+    },
+    src: '//snailthreatenedinvited.com/7c7b5884fcb9c78838bb6fbb2e72739f/invoke.js',
+    preloaded: false
+  },
+  {
+    atOptions: {
+      'key': '0e30a5fb7feed2a39cc356e389549986',
+      'format': 'iframe',
+      'height': 250,
+      'width': 300,
+      'params': {}
+    },
+    src: '//snailthreatenedinvited.com/0e30a5fb7feed2a39cc356e389549986/invoke.js',
+    preloaded: false
+  },
+  {
+    atOptions: {
+      'key': '33e30457415285f30adcef808fd7325a',
+      'format': 'iframe',
+      'height': 250,
+      'width': 300,
+      'params': {}
+    },
+    src: '//snailthreatenedinvited.com/33e30457415285f30adcef808fd7325a/invoke.js',
+    preloaded: false
+  },
+  {
+    atOptions: {
+      'key': '232b712b4f3926add741ef3dacfa845b',
+      'format': 'iframe',
+      'height': 250,
+      'width': 300,
+      'params': {}
+    },
+    src: '//snailthreatenedinvited.com/232b712b4f3926add741ef3dacfa845b/invoke.js',
+    preloaded: false
+  }
+];
+
+// Preloaded ad content
+const preloadedAdContent = {};
+
+// Function to preload all lightbox ad scripts
+function preloadLightboxAds() {
+  console.log('Preloading lightbox ads...');
+  
+  // Create a hidden container for preloading
+  const preloadContainer = document.createElement('div');
+  preloadContainer.id = 'ad-preload-container';
+  preloadContainer.style.position = 'absolute';
+  preloadContainer.style.width = '0';
+  preloadContainer.style.height = '0';
+  preloadContainer.style.overflow = 'hidden';
+  preloadContainer.style.visibility = 'hidden';
+  document.body.appendChild(preloadContainer);
+  
+  // Preload each ad script
+  lightboxAdScripts.forEach((adScript, index) => {
+    try {
+      // Create a unique namespace for this ad
+      const namespace = `preloadedAd_${index}`;
+      
+      // Create a container for this ad
+      const adContainer = document.createElement('div');
+      adContainer.id = `preload-ad-${index}`;
+      adContainer.style.width = '300px';
+      adContainer.style.height = '250px';
+      preloadContainer.appendChild(adContainer);
+      
+      // Create an iframe to isolate the ad content
+      const iframe = document.createElement('iframe');
+      iframe.style.width = '300px';
+      iframe.style.height = '250px';
+      iframe.style.border = 'none';
+      adContainer.appendChild(iframe);
+      
+      // Store the iframe for later use (even before content is loaded)
+      preloadedAdContent[index] = iframe;
+      
+      // Create the document inside the iframe
+      try {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+        iframeDoc.open();
+        iframeDoc.write(`
+          <!DOCTYPE html>
+          <html>
+          <head>
+            <style>
+              body { margin: 0; padding: 0; overflow: hidden; }
+              .ad-container { width: 300px; height: 250px; overflow: hidden; }
+              iframe { width: 300px !important; height: 250px !important; }
+            </style>
+          </head>
+          <body>
+            <div id="ad-container-${index}" class="ad-container"></div>
+            <script>
+              // Create a completely isolated copy of the ad options
+              window.atOptions = ${JSON.stringify(adScript.atOptions)};
+              
+              // Force the dimensions to be correct
+              window.atOptions.width = 300;
+              window.atOptions.height = 250;
+              
+              // Load the ad script
+              (function() {
+                const script = document.createElement('script');
+                script.src = "${adScript.src}";
+                script.async = true;
+                document.getElementById("ad-container-${index}").appendChild(script);
+              })();
+            </script>
+          </body>
+          </html>
+        `);
+        iframeDoc.close();
+      } catch (iframeError) {
+        console.error(`Error writing to iframe for ad ${index}:`, iframeError);
+      }
+      
+      // Mark as preloaded
+      adScript.preloaded = true;
+      
+      console.log(`Preloaded ad ${index}`);
+    } catch (error) {
+      console.error(`Error preloading ad ${index}:`, error);
+    }
+  });
+}
+
+// Function to replace the lightbox image with a preloaded ad
+function replaceImageWithAd() {
+  // Get the lightbox image
+  const lightboxImg = document.getElementById('lightbox-img');
+  
+  // Hide the original image
+  lightboxImg.style.display = 'none';
+  
+  // Remove any existing ad container
+  const existingAdContainer = document.getElementById('lightbox-ad-container');
+  if (existingAdContainer) {
+    existingAdContainer.remove();
+  }
+  
+  // Create ad container with explicit dimensions
+  const adContainer = document.createElement('div');
+  adContainer.id = 'lightbox-ad-container';
+  adContainer.className = 'lightbox-ad-container';
+  adContainer.style.width = '300px';
+  adContainer.style.height = '250px';
+  adContainer.style.overflow = 'hidden';
+  adContainer.style.backgroundColor = '#f0f0f0';
+  adContainer.style.border = '1px solid #ddd';
+  
+  // Insert the ad container right after the image
+  lightboxImg.parentNode.insertBefore(adContainer, lightboxImg.nextSibling);
+  
+  // Select a random ad from the preloaded ads
+  const lightboxAdIndex = Math.floor(Math.random() * lightboxAdScripts.length);
+  const adScript = lightboxAdScripts[lightboxAdIndex];
+  
+  // Create a new iframe directly instead of trying to clone
+  const iframe = document.createElement('iframe');
+  iframe.style.width = '300px';
+  iframe.style.height = '250px';
+  iframe.style.border = 'none';
+  iframe.style.overflow = 'hidden';
+  iframe.style.display = 'block';
+  adContainer.appendChild(iframe);
+  
+  // Write content to the iframe
+  const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+  iframeDoc.open();
+  iframeDoc.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <style>
+        body { margin: 0; padding: 0; overflow: hidden; }
+        .ad-container { width: 300px; height: 250px; overflow: hidden; }
+        iframe { width: 300px !important; height: 250px !important; }
+      </style>
+    </head>
+    <body>
+      <div id="direct-ad-container" class="ad-container"></div>
+      <script>
+        // Create a completely isolated copy of the ad options
+        window.atOptions = ${JSON.stringify(adScript.atOptions)};
+        
+        // Force the dimensions to be correct
+        window.atOptions.width = 300;
+        window.atOptions.height = 250;
+        
+        // Load the ad script
+        (function() {
+          const script = document.createElement('script');
+          script.src = "${adScript.src}";
+          script.async = true;
+          document.getElementById("direct-ad-container").appendChild(script);
+        })();
+      </script>
+    </body>
+    </html>
+  `);
+  iframeDoc.close();
+  
+  // Add a fallback in case the ad doesn't load
+  setTimeout(() => {
+    // Check if the ad container is empty or has no visible content
+    const adContainerContent = adContainer.innerHTML.trim();
+    if (!adContainerContent || adContainer.offsetHeight < 10) {
+      console.log('Ad failed to load, showing fallback');
+      adContainer.innerHTML = '<div style="text-align: center; width: 300px; height: 250px; display: flex; align-items: center; justify-content: center; background-color: #f0f0f0; border: 1px solid #ddd;">Advertisement 300x250</div>';
+    }
+  }, 3000);
+  
+  console.log(`Using direct ad loading for ad ${lightboxAdIndex} with dimensions 300x250`);
+}
 const desktopAdScripts = [
   {
     atOptions: {
