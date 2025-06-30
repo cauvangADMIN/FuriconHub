@@ -15,6 +15,8 @@ let visibleIconIndices = new Set(); // Track which icons are currently visible
 // Lightbox elements
 let lightbox, lightboxImg, lightboxCaption, closeBtn;
 let isDraggingGrid = false; // Flag to track if we're dragging the grid
+let copyInProgress = false; // Move this variable to global scope
+let lightboxCountdownInterval = null; // Add this to store the interval reference
 
 // Variables for drag momentum
 let velocity = { x: 0, y: 0 };
@@ -29,12 +31,40 @@ function setupLightbox() {
   // Close lightbox when clicking the close button
   closeBtn.addEventListener('click', () => {
     lightbox.classList.remove('active');
+    
+    // Clear any running interval
+    if (lightboxCountdownInterval) {
+      clearInterval(lightboxCountdownInterval);
+      lightboxCountdownInterval = null;
+    }
+    
+    // Reset copy state when closing lightbox
+    setTimeout(() => {
+      const copyBtn = document.querySelector('.copy-btn');
+      copyBtn.textContent = "Copy this image (Watermark)";
+      copyBtn.classList.remove('close-btn-style', 'disabled');
+      copyInProgress = false;
+    }, 300);
   });
   
   // Close lightbox when clicking outside the content
   lightbox.addEventListener('click', (e) => {
     if (e.target === lightbox) {
       lightbox.classList.remove('active');
+      
+      // Clear any running interval
+      if (lightboxCountdownInterval) {
+        clearInterval(lightboxCountdownInterval);
+        lightboxCountdownInterval = null;
+      }
+      
+      // Reset copy state when closing lightbox
+      setTimeout(() => {
+        const copyBtn = document.querySelector('.copy-btn');
+        copyBtn.textContent = "Copy this image (Watermark)";
+        copyBtn.classList.remove('close-btn-style', 'disabled');
+        copyInProgress = false;
+      }, 300);
     }
   });
   
@@ -42,17 +72,42 @@ function setupLightbox() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && lightbox.classList.contains('active')) {
       lightbox.classList.remove('active');
+      
+      // Clear any running interval
+      if (lightboxCountdownInterval) {
+        clearInterval(lightboxCountdownInterval);
+        lightboxCountdownInterval = null;
+      }
+      
+      // Reset copy state when closing lightbox
+      setTimeout(() => {
+        const copyBtn = document.querySelector('.copy-btn');
+        copyBtn.textContent = "Copy this image (Watermark)";
+        copyBtn.classList.remove('close-btn-style', 'disabled');
+        copyInProgress = false;
+      }, 300);
     }
+  });
+  
+  // Add buy button functionality to open Gumroad in a new tab
+  const buyBtn = document.querySelector('.buy-btn');
+  buyBtn.addEventListener('click', () => {
+    window.open('https://gumroad.com/discover', '_blank');
   });
   
   // Add copy functionality to the copy button
   const copyBtn = document.querySelector('.copy-btn');
-  let copyInProgress = false; // Add a flag to track if copy is in progress
 
   copyBtn.addEventListener('click', async () => {
     // If copy is already in progress, just close the lightbox
     if (copyBtn.classList.contains('close-btn-style')) {
       lightbox.classList.remove('active');
+      
+      // Clear any running interval
+      if (lightboxCountdownInterval) {
+        clearInterval(lightboxCountdownInterval);
+        lightboxCountdownInterval = null;
+      }
       
       // Reset the button for next time
       setTimeout(() => {
@@ -104,28 +159,34 @@ function setupLightbox() {
       replaceImageWithAd();
       
       // Convert the canvas to a blob
-      canvas.toBlob(async (blob) => {
-        try {
-          // Create a ClipboardItem with the blob
-          const item = new ClipboardItem({ 'image/png': blob });
-          
-          // Write to clipboard
-          await navigator.clipboard.write([item]);
-          
-          // Use a unique variable name for the interval
-          const lightboxCountdownInterval = setInterval(() => {
-            countdownSeconds--;
-            if (countdownSeconds > 0) {
-              lightboxCaption.textContent = `Copying image... ${countdownSeconds}`;
-            } else {
-              clearInterval(lightboxCountdownInterval);
-              lightboxCaption.textContent = 'Image copied to clipboard!';
-              lightboxCaption.className = 'lightbox-caption success';
-              
-              // Enable the close button after countdown
-              copyBtn.classList.remove('disabled');
-            }
-          }, 1000);
+canvas.toBlob(async (blob) => {
+  try {
+    // Create a ClipboardItem with the blob
+    const item = new ClipboardItem({ 'image/png': blob });
+    
+    // Write to clipboard
+    await navigator.clipboard.write([item]);
+    
+    // Clear any existing interval first
+    if (lightboxCountdownInterval) {
+      clearInterval(lightboxCountdownInterval);
+    }
+    
+    // Use the global variable for the interval
+    lightboxCountdownInterval = setInterval(() => {
+      countdownSeconds--;
+      if (countdownSeconds > 0) {
+        lightboxCaption.textContent = `Copying image... ${countdownSeconds}`;
+      } else {
+        clearInterval(lightboxCountdownInterval);
+        lightboxCountdownInterval = null;
+        lightboxCaption.textContent = 'Image copied to clipboard!';
+        lightboxCaption.className = 'lightbox-caption success';
+        
+        // Enable the close button after countdown
+        copyBtn.classList.remove('disabled');
+      }
+    }, 1000);
           
         } catch (error) {
           console.error('Error copying to clipboard:', error);
