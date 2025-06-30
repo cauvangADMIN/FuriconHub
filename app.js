@@ -92,7 +92,7 @@ function setupLightbox() {
   // Add buy button functionality to open Gumroad in a new tab
   const buyBtn = document.querySelector('.buy-btn');
   buyBtn.addEventListener('click', () => {
-    window.open('https://gumroad.com/discover', '_blank');
+    window.open('https://petmemoji.gumroad.com/', '_blank');
   });
   
   // Add copy functionality to the copy button
