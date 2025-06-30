@@ -16,18 +16,21 @@ async function addWatermarkToImage(imagePath, outputPath) {
     ctx.drawImage(image, 0, 0);
     
     // Calculate font size based on image dimensions - minimum 16px, scales with image width
-    const fontSize = Math.max(16, Math.floor(canvas.width * 0.05));
+    const fontSize = Math.max(17, Math.floor(canvas.width * 0.05));
     
     // Add watermark text
     ctx.font = `${fontSize}px Arial`;
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; // Dark text with transparency
+    ctx.fillStyle = 'rgba(255, 255, 255, 1)'; // Chữ trắng
+    ctx.strokeStyle = 'rgba(0, 0, 0, 1)'; // Viền đen
+    ctx.lineWidth = Math.max(1, Math.floor(fontSize/15)); // Độ dày viền tỷ lệ với kích thước chữ
     ctx.textAlign = 'center';
     
     // Position at 3/4 from the top
     const textY = Math.floor(canvas.height * 0.85);
     
     // Add the watermark text
-    ctx.fillText('This is watermark', canvas.width / 2, textY);
+    ctx.strokeText('Petmemoji', canvas.width / 2, textY); // Vẽ viền trước
+    ctx.fillText('Petmemoji', canvas.width / 2, textY); // Sau đó vẽ chữ
     
     // Save the watermarked image
     const buffer = canvas.toBuffer('image/png');
